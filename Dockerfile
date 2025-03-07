@@ -11,7 +11,11 @@ EXPOSE 25565 19132
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
-    unzip
+    unzip \
+    vim \
+    nmap \
+    procps \
+    git
 
 # Accept the EULA (set to true in the eula.txt file)
 RUN echo "eula=true" > /minecraft/eula.txt
