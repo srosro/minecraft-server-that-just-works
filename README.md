@@ -289,6 +289,7 @@ server/              THE ONLY THING MOUNTED INTO THE CONTAINER
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
 scripts/             ping checker, backup, stop, wait-ready         │ deliberately kept
+tests/               argument-validation checks for wait-ready       │ out of the mount
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 
