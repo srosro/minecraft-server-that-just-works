@@ -155,7 +155,9 @@ then checks whether the shutdown was actually clean and refuses to hand you a to
 world. `docker_run.sh` and `scripts/backup-world.sh` both run it.
 
 Editing `server/server.properties`, the world, or anything under `server/plugins/` needs **no** recreate
-— it's all bind-mounted. Just `scripts/stop-server.sh && docker start mc-server`.
+— it's all bind-mounted. Just `scripts/stop-server.sh && docker start mc-server`. (If
+the stop refuses and tells you to `docker rm mc-server`, that removes the container, so
+recreate it with `./docker_run.sh` rather than `docker start`.)
 
 ---
 

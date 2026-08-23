@@ -37,7 +37,8 @@ if [[ $was_running != true ]]; then
     echo "REFUSING: mc-server was already stopped, and its last exit was SIGKILL." >&2
     echo "That can leave a world torn mid-write, and there is no way to tell from here" >&2
     echo "whether it happened just now or long ago. Check the world, then acknowledge" >&2
-    echo "with: docker rm mc-server" >&2
+    echo "with: docker rm mc-server   -- and recreate it with ./docker_run.sh, since" >&2
+    echo "that removes the container 'docker start' would have reused." >&2
     exit 1
   fi
   exit 0
@@ -48,6 +49,7 @@ fi
 if [[ $exit_code == 137 ]]; then
   echo "FATAL: mc-server was killed during shutdown -- the save exceeded 90s, or it" >&2
   echo "hit the memory cap. The world may be mid-write. Check it, then clear this" >&2
-  echo "state with: docker rm mc-server" >&2
+  echo "state with: docker rm mc-server   -- and recreate it with ./docker_run.sh," >&2
+  echo "since that removes the container 'docker start' would have reused." >&2
   exit 1
 fi
