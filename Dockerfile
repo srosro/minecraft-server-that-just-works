@@ -1,5 +1,5 @@
 # Use an official OpenJDK base image
-FROM openjdk:21-slim-bullseye
+FROM eclipse-temurin:21-jre-jammy
 
 # Set environment variables
 ENV MINECRAFT_USER=docker \
