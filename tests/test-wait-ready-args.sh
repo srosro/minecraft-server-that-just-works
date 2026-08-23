@@ -11,27 +11,36 @@
 set -uo pipefail
 
 WAIT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/wait-ready.sh
+REJECTED='must be a whole number'   # the validator's own words -- see below
+
+# Without `timeout` the accept rows would fail open and the suite would pass silently.
+command -v timeout >/dev/null || { echo "FATAL: needs 'timeout' (coreutils)" >&2; exit 1; }
 tmp=$(mktemp -d); trap 'rm -rf "$tmp"' EXIT
 fails=0
 
 # An exit-code-only assertion would pass against a version that executes the payload
 # and *then* rejects it, so every injection row also asserts the side effect never
 # happened.
+# Assertions match the validator's message, not just the exit code: a script that
+# exited 2 unconditionally, or 0 unconditionally, would satisfy exit codes alone while
+# doing nothing. The message only appears when validation actually rejected.
 reject_and_no_exec() {
-  local arg=$1 marker="$tmp/pwned"
+  local arg=$1 marker="$tmp/pwned" out rc
   rm -f "$marker"
-  "$WAIT" "${arg//__MARKER__/$marker}" >/dev/null 2>&1
-  local rc=$?
-  if [[ $rc -ne 2 ]]; then echo "FAIL: [$arg] expected exit 2, got $rc"; fails=$((fails+1)); return; fi
+  out=$("$WAIT" "${arg//__MARKER__/$marker}" 2>&1); rc=$?
   if [[ -e $marker ]]; then echo "FAIL: [$arg] EXECUTED the payload"; fails=$((fails+1)); return; fi
+  if [[ $rc -ne 2 ]] || ! grep -qF "$REJECTED" <<<"$out"; then
+    echo "FAIL: [$arg] expected rejection (exit 2 + validator message), got rc=$rc"; fails=$((fails+1)); return
+  fi
   echo "ok: rejected without executing -- $arg"
 }
 
 reject() {
-  local arg=$1
-  "$WAIT" "$arg" >/dev/null 2>&1
-  local rc=$?
-  if [[ $rc -ne 2 ]]; then echo "FAIL: [$arg] expected exit 2, got $rc"; fails=$((fails+1)); return; fi
+  local arg=$1 out rc
+  out=$("$WAIT" "$arg" 2>&1); rc=$?
+  if [[ $rc -ne 2 ]] || ! grep -qF "$REJECTED" <<<"$out"; then
+    echo "FAIL: [$arg] expected rejection (exit 2 + validator message), got rc=$rc"; fails=$((fails+1)); return
+  fi
   echo "ok: rejected -- $arg"
 }
 
@@ -40,10 +49,11 @@ reject() {
 # caps the wall clock: with a container present but still booting, an accepted 0900
 # would otherwise poll for fifteen minutes. timeout's 124 is still `not 2`.
 accept() {
-  local arg=$1
-  timeout 3 "$WAIT" "$arg" >/dev/null 2>&1
-  local rc=$?
-  if [[ $rc -eq 2 ]]; then echo "FAIL: [$arg] should be accepted, was rejected"; fails=$((fails+1)); return; fi
+  local arg=$1 out
+  out=$(timeout 3 "$WAIT" "$arg" 2>&1 || true)
+  if grep -qF "$REJECTED" <<<"$out"; then
+    echo "FAIL: [$arg] should be accepted, was rejected"; fails=$((fails+1)); return
+  fi
   echo "ok: accepted -- ${arg:-<default>}"
 }
 
