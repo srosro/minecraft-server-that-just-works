@@ -25,9 +25,16 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # until after the pull that causes the problem.
 for stale in world world_nether world_the_end; do
   [[ -d "$REPO_DIR/$stale" ]] || continue
-  echo "FATAL: $stale/ found at the repo root -- this checkout predates the server/" >&2
-  echo "layout and the pull did not move it (git leaves untracked files behind)." >&2
-  echo "Move it: mv $stale $REPO_DIR/server/$stale   then re-run." >&2
+  echo "FATAL: $stale/ found at the repo root. This checkout predates the server/" >&2
+  echo "layout, and git left it behind because it is untracked there." >&2
+  echo "" >&2
+  echo "The root copy is your live save. server/$stale is the tracked snapshot," >&2
+  echo "which is older. Keep a copy, then let the live one win:" >&2
+  echo "" >&2
+  echo "  tar czf ~/pre-migration-\$(date +%F).tar.gz $stale" >&2
+  echo "  rm -rf $REPO_DIR/server/$stale && mv $stale $REPO_DIR/server/$stale" >&2
+  echo "" >&2
+  echo "(plain mv would nest it at server/$stale/$stale, since the destination exists.)" >&2
   exit 1
 done
 

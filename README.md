@@ -199,16 +199,20 @@ and it is one-way. Stop the server first — tarring a running world captures it
 mid-write:
 
 ```bash
-scripts/world.sh backup                        # prints the archive path
-scripts/world.sh restore ~/mc-backup-<date>.tar.gz && ./docker_run.sh
+scripts/world.sh backup        # stops the server, tars, prints the archive path
 ```
 
-Both stop the server first and refuse to continue if it won't stop, because tarring
-or overwriting a live world captures it mid-write. `restore` **replaces** the worlds
-rather than merging into them — untarring over an upgraded world would leave
-new-format chunks beside the old `level.dat` — and the archive carries the
-`Dockerfile` alongside the jar, since Paper won't start on a Java newer than it was
-built against and a rollback has to move both together.
+It refuses to run if the server won't stop — tarring a live world captures it
+mid-write. The archive carries the `Dockerfile` alongside the jar, because Paper
+won't start on a Java newer than it was built against, so a rollback has to move the
+pin and the jar together.
+
+**Restoring is deliberately manual.** It runs once a year at most, and automating it
+means deleting the live world before the old one is safely in place — a bad trade.
+With the server stopped, move the current directories aside (don't untar *over* them:
+that leaves new-format chunks beside an old `level.dat`), extract into `server/`, put
+the archive's `Dockerfile` back at the repo root, then `docker build -t minecraft-server .`
+and `./docker_run.sh`.
 
 ---
 
