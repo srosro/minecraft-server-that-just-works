@@ -1,63 +1,19 @@
-# Java 25 — required by Minecraft 26.2. Temurin publishes arm64 (Raspberry Pi 5).
+# Java 25 -- the version Minecraft 26.2 pins. Paper refuses to start on a Java
+# release newer than it was built against, so this tracks the server version
+# rather than "latest". Temurin publishes arm64, which the Raspberry Pi needs.
 FROM eclipse-temurin:25-jre-noble
 
-# Set environment variables
-ENV MINECRAFT_USER=docker \
-    MINECRAFT_UID=1000 \
-    MINECRAFT_GID=1000
-
-# Install required packages
-RUN apt-get update && apt-get install -y \
-    curl \
-    wget \
-    unzip \
-    vim \
-    nmap \
-    procps \
-    git \
-    sudo && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
-
-# Create the minecraft user
-RUN groupadd -g ${MINECRAFT_GID} ${MINECRAFT_USER} && \
-    useradd -u ${MINECRAFT_UID} -g ${MINECRAFT_GID} -m -s /bin/bash ${MINECRAFT_USER} && \
-    echo "${MINECRAFT_USER} ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/${MINECRAFT_USER} && \
-    chmod 0440 /etc/sudoers.d/${MINECRAFT_USER}
-
-# Create minecraft directory and set permissions
-RUN mkdir -p /minecraft && \
-    chown -R ${MINECRAFT_USER}:${MINECRAFT_USER} /minecraft
-
-# Set the working directory
+# The server itself needs nothing but a JRE. No shell tooling is installed on
+# purpose: this process is exposed to the internet and runs third-party plugins.
 WORKDIR /minecraft
+ENV HOME=/minecraft
 
-# Accept the EULA (set to true in the eula.txt file)
-RUN echo "eula=true" > /minecraft/eula.txt && \
-    chown ${MINECRAFT_USER}:${MINECRAFT_USER} /minecraft/eula.txt
+EXPOSE 25565 19132/udp
 
-# Expose the default Minecraft server ports
-EXPOSE 25565 19132
+# Unprivileged. docker_run.sh overrides this with the invoking user's uid:gid so
+# that bind-mounted world files stay writable from the host.
+USER 1000:1000
 
-# Switch to the minecraft user
-USER ${MINECRAFT_USER}
-
-# Create an entrypoint script
-RUN echo '#!/bin/bash\n\
-# Fix SSH key permissions if SSH keys are mounted\n\
-if [ -d "/home/docker/.ssh" ]; then\n\
-  sudo chown -R docker:docker /home/docker/.ssh\n\
-  chmod 700 /home/docker/.ssh\n\
-  find /home/docker/.ssh -type f -exec chmod 600 {} \\;\n\
-  find /home/docker/.ssh -name "*.pub" -exec chmod 644 {} \\;\n\
-fi\n\
-\n\
-# Run the server with the provided arguments\n\
-exec "$@"\n' > /home/docker/entrypoint.sh && \
-    chmod +x /home/docker/entrypoint.sh
-
-# Set the entrypoint
-ENTRYPOINT ["/home/docker/entrypoint.sh"]
-
-# Default command to run the server
+# The single home for heap settings -- docker_run.sh forwards "$@" rather than
+# repeating this, so the two cannot drift.
 CMD ["java", "-Xms2G", "-Xmx4G", "-jar", "paper.jar", "nogui"]

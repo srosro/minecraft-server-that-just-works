@@ -7,3 +7,8 @@
 # Runtime churn
 /usercache.json
 /.console_history
+
+# Floodgate's shared secret. Anyone holding it can forge a Bedrock login as
+# any username, including an op -- Floodgate players bypass Mojang auth by
+# design. Regenerated on first start; must never be committed.
+/plugins/floodgate/key.pem

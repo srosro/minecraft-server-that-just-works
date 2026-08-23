@@ -7,8 +7,10 @@ Say this to Claude and it should take you all the way to a running, current serv
 
 > update and run https://github.com/srosro/minecraft-server-that-just-works
 
-Everything the server needs — the Paper jar, the world, the plugins, the config —
-lives in this repo. There is no separate download step and no hidden state.
+The world, the plugins, and all the config live in this repo, so your save travels
+with it. On its **first** start the Paper jar downloads the Mojang server jar and
+~100 MB of libraries, so that boot needs internet and takes a few minutes; every
+start after that is seconds.
 
 ---
 
@@ -33,7 +35,10 @@ Bedrock players join through Geyser, and Floodgate lets them in without a Java a
   curl -fsSL https://get.docker.com | sh
   sudo usermod -aG docker "$USER"     # log out and back in
   ```
-- ~2 GB of RAM free for the server (it is capped at 5 GB, heap 4 GB)
+- **~5 GB of free RAM** — the container is capped at 5 GB with a 4 GB heap. Running
+  a smaller host means lowering both `--memory` in `docker_run.sh` and `-Xmx` in the
+  Dockerfile's `CMD` together; the cap must stay above the heap or the kernel
+  OOM-kills the server mid-save.
 - Ports `25565/tcp` and `19132/udp` reachable — see [Networking](#networking)
 
 ---
@@ -50,14 +55,19 @@ docker build -t minecraft-server .
 That's the whole thing. The container restarts on boot and on crash
 (`--restart unless-stopped`).
 
+The first start is slow and quiet while it fetches libraries — watch it with
+`docker logs -f mc-server` and wait for `Done (…)! For help, type "help"`.
+
 ```bash
 docker logs -f mc-server        # watch the console
 docker stop -t 90 mc-server     # stop (waits for a clean world save)
-./docker_run.sh                 # start again
+docker start mc-server          # start the same container again
+./docker_run.sh                 # rebuild the container (after a config/image change)
 ```
 
 **Always stop with `docker stop -t 90`.** Minecraft flushes the world on shutdown, and
-a short timeout can cut that off mid-write and corrupt chunks.
+a short timeout can cut that off mid-write and corrupt chunks. `docker_run.sh` replaces
+any existing container, so stop cleanly *before* re-running it.
 
 ---
 

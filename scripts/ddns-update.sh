@@ -21,12 +21,17 @@ PASSWORD=$(<"$PASSFILE")
 IP=$(curl -4fsS --max-time 15 https://api.ipify.org)
 [[ $IP =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "FATAL: bad public IP: $IP" >&2; exit 1; }
 
-RESP=$(curl -fsS --max-time 20 --get \
-  --data-urlencode "host=$HOST" \
-  --data-urlencode "domain=$DOMAIN" \
-  --data-urlencode "password=$PASSWORD" \
-  --data-urlencode "ip=$IP" \
-  https://dynamicdns.park-your-domain.com/update)
+# Parameters go in over stdin, not argv: anything on the command line is
+# readable by any local user via `ps` / /proc/<pid>/cmdline, and this runs on a
+# timer every few minutes.
+RESP=$(curl -fsS --max-time 20 --get --config - <<CFG
+url = "https://dynamicdns.park-your-domain.com/update"
+data-urlencode = "host=$HOST"
+data-urlencode = "domain=$DOMAIN"
+data-urlencode = "password=$PASSWORD"
+data-urlencode = "ip=$IP"
+CFG
+)
 
 ERRS=$(grep -oE "<ErrCount>[0-9]+</ErrCount>" <<<"$RESP" | grep -oE "[0-9]+" || echo "?")
 if [[ $ERRS != 0 ]]; then
