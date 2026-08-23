@@ -206,11 +206,16 @@ version has to delete the live world before the old one is safely back.
 
 The archive holds `world*/`, `plugins/`, `paper.jar` and the `Dockerfile` as they were
 at one moment, so putting all four back gives a consistent server — the `Dockerfile`
-matters because it pins the Java version that jar needs. Three things to get right:
-unpack it somewhere scratch and check it *before* touching the live tree; **replace**
-the world directories rather than untarring over them, since merging leaves new-format
-chunks beside an old `level.dat`; and note the `Dockerfile` is a top-level member of
-the archive, so it belongs at the repo root, not under `server/`.
+matters because it pins the Java version that jar needs.
+
+Stop the server first (`docker stop -t 90 mc-server`), and when everything is in place
+rebuild and start it (`docker build -t minecraft-server . && ./docker_run.sh`) — the
+`Dockerfile` you just restored only takes effect on a rebuild. In between, three
+things to get right: unpack the archive somewhere scratch and check it *before*
+touching the live tree; **replace** the world directories rather than untarring over
+them, since merging leaves new-format chunks beside an old `level.dat`; and note the
+`Dockerfile` is a top-level member of the archive, so it belongs at the repo root, not
+under `server/`.
 
 ---
 
