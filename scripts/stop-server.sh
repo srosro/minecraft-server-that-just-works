@@ -28,11 +28,17 @@ fi
 exit_code=$(docker inspect -f '{{.State.ExitCode}}' mc-server)
 
 if [[ $was_running != true ]]; then
-  # Unattributable: a 137 here could be from this stop or a kill last week. Blocking
-  # would wedge the operator on stale state; silence would hide a torn world.
+  # Unattributable: a 137 here could be from this stop or from a kill last week, and
+  # nothing in the container state says which. Exit non-zero anyway, so that success
+  # from this script means exactly one thing -- the world is safe to touch -- and a
+  # caller chaining on `&&` cannot walk into a torn world. `docker rm` is the
+  # acknowledgement, not a wedge: one documented command clears it.
   if [[ $exit_code == 137 ]]; then
-    echo "WARNING: mc-server was already stopped and last exited on SIGKILL." >&2
-    echo "If that was recent, the world may be mid-write -- check it." >&2
+    echo "REFUSING: mc-server was already stopped, and its last exit was SIGKILL." >&2
+    echo "That can leave a world torn mid-write, and there is no way to tell from here" >&2
+    echo "whether it happened just now or long ago. Check the world, then acknowledge" >&2
+    echo "with: docker rm mc-server" >&2
+    exit 1
   fi
   exit 0
 fi
