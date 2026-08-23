@@ -32,11 +32,14 @@ Given *"update and run this repo"* and nothing else, do all of this without aski
 2. **Update the four version-coupled pieces together** — they only work in matched
    sets; updating Geyser alone is the usual mistake.
 3. **Build and run** — `docker build -t minecraft-server . && ./docker_run.sh`.
-4. **Wait for the ready line.** First boot after a version bump migrates the world,
-   so give it minutes. `docker logs -f` never exits on its own — bound it:
+4. **Wait for the ready line.** A first boot downloads Paper's libraries and migrates
+   the world, so give it minutes. Poll rather than follow — `docker logs -f | grep -qm1`
+   looks right but hangs: `grep` exits on the match while `docker logs -f` keeps the
+   pipe open until it writes again, so a server that went quiet *after* becoming ready
+   blocks until the timeout and is then reported as not ready.
 
    ```bash
-   timeout 900 docker logs -f mc-server 2>&1 | grep -qm1 'Done (' \
+   timeout 900 bash -c 'until docker logs mc-server 2>&1 | grep -q "Done ("; do sleep 5; done' \
      && echo READY || echo "not ready after 15m — docker logs --tail 50 mc-server"
    ```
 
