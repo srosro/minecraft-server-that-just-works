@@ -7,6 +7,16 @@ set -euo pipefail
 
 DEADLINE=${1:-900}
 
+# Validate before any arithmetic. Bash evaluates a variable's *contents* as an
+# arithmetic expression, and an array subscript there performs command substitution:
+# `SECONDS[$(cmd)]` runs cmd. `set -u` is not a defense -- it only catches payloads
+# naming an unset variable, and one naming a set variable executes silently.
+if [[ ! $DEADLINE =~ ^[0-9]+$ ]]; then
+  echo "FATAL: timeout must be a whole number of seconds (got: ${DEADLINE})" >&2
+  exit 2
+fi
+DEADLINE=$((10#$DEADLINE))   # base 10 explicitly, so 0900 isn't read as octal
+
 # RestartCount, not .State.Running: Docker reports Running=true for the whole restart
 # backoff ("we should consider the container running when it is restarting"), and
 # docker_run.sh always uses --restart unless-stopped -- so a crash-looping server
