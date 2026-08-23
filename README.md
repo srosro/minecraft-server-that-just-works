@@ -38,7 +38,38 @@ Bedrock players join through Geyser, and Floodgate lets them in without a Java a
 - **~5 GB of free RAM** — the container is capped at 5 GB with a 4 GB heap. Running
   a smaller host means lowering both `--memory` in `docker_run.sh` and `-Xmx` in the
   Dockerfile's `CMD` together; the cap must stay above the heap or the kernel
-  OOM-kills the server mid-save.
+  OOM-kills the server mid-save. **On Raspberry Pi OS that cap does nothing until
+  you enable it — see below.**
+
+### Raspberry Pi: the memory cap needs enabling
+
+Raspberry Pi OS ships without the memory cgroup, so `--memory=5g` is **silently
+discarded**:
+
+```
+WARNING: Your kernel does not support memory limit capabilities or the cgroup
+is not mounted. Limitation discarded.
+```
+
+`-Xmx` still bounds the heap, but nothing bounds the container, so an overrun
+lets the kernel pick the OOM victim by score — which may be something else on the
+Pi rather than the server. Enable it with:
+
+```bash
+# cmdline.txt must stay ONE line -- the bootloader reads only the first, so this
+# appends to the existing line rather than adding a new one.
+sudo sed -i '1 s/$/ cgroup_enable=memory cgroup_memory=1/' /boot/firmware/cmdline.txt
+sudo reboot
+```
+
+On Pi OS older than Bookworm the file is `/boot/cmdline.txt` — editing the
+Bookworm path there lands in a file the bootloader never reads.
+
+Confirm it took, after the reboot:
+
+```bash
+docker info 2>/dev/null | grep -i 'memory limit'   # no "No memory limit support"
+```
 - Ports `25565/tcp` and `19132/udp` reachable — see [Networking](#networking)
 
 ---
@@ -134,24 +165,6 @@ even when forwarding is broken):
 ```bash
 ./scripts/mcping.py <public-ip-or-hostname> java
 ./scripts/mcping.py <public-ip-or-hostname> bedrock
-```
-
-### Raspberry Pi: the memory cap needs enabling
-
-On Raspberry Pi OS, `docker_run.sh`'s `--memory=5g` is **silently ignored**:
-
-```
-WARNING: Your kernel does not support memory limit capabilities or the cgroup
-is not mounted. Limitation discarded.
-```
-
-The heap is still bounded by `-Xmx`, but the container isn't, so if the JVM
-overruns, the kernel picks the OOM victim by score — and that may be something
-else on the Pi rather than the server. To enable the cap, append to
-`/boot/firmware/cmdline.txt` (one line, no newline) and reboot:
-
-```
-cgroup_enable=memory cgroup_memory=1
 ```
 
 ### DNS (manual, on purpose)
