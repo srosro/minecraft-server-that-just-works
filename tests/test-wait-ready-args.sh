@@ -35,9 +35,13 @@ reject() {
   echo "ok: rejected -- $arg"
 }
 
-accept() {   # accepted => gets past validation to docker, which exits 1 (no container)
+# Accepted means "got past validation". What happens after depends on whether an
+# mc-server container happens to exist on this host, so this asserts only `not 2` and
+# caps the wall clock: with a container present but still booting, an accepted 0900
+# would otherwise poll for fifteen minutes. timeout's 124 is still `not 2`.
+accept() {
   local arg=$1
-  "$WAIT" "$arg" >/dev/null 2>&1
+  timeout 3 "$WAIT" "$arg" >/dev/null 2>&1
   local rc=$?
   if [[ $rc -eq 2 ]]; then echo "FAIL: [$arg] should be accepted, was rejected"; fails=$((fails+1)); return; fi
   echo "ok: accepted -- ${arg:-<default>}"
