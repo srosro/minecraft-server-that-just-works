@@ -277,20 +277,6 @@ Bedrock players must type the port manually. Java players usually don't.
 
 ---
 
-## Tests
-
-```bash
-tests/test-wait-ready-args.sh
-```
-
-One test, deliberately. It pins the argument validation in `scripts/wait-ready.sh`,
-which is the only place here where a regression is silent command execution — bash
-evaluates a variable's contents as arithmetic, and an array subscript there runs
-command substitution. Run it after touching that script. Everything else in this repo
-is verified by running it.
-
----
-
 ## Layout
 
 ```
@@ -303,7 +289,6 @@ server/              THE ONLY THING MOUNTED INTO THE CONTAINER
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
 scripts/             ping checker, backup, stop, wait-ready         │ deliberately kept
-tests/               argument-validation checks for wait-ready       │ out of the mount
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 

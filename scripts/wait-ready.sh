@@ -2,26 +2,13 @@
 # Wait for the server to finish starting. Exits 0 on ready, non-zero if it crashed,
 # isn't there, or ran out of time -- so a runbook can chain on it.
 #
-#   scripts/wait-ready.sh [seconds]     (default 900)
+#   scripts/wait-ready.sh
 set -euo pipefail
 
-DEADLINE=${1:-900}
+DEADLINE=900
 
-# Validate before any arithmetic. Bash evaluates a variable's *contents* as an
-# arithmetic expression, and an array subscript there performs command substitution:
-# `SECONDS[$(cmd)]` runs cmd. `set -u` is not a defense -- it only catches payloads
-# naming an unset variable, and one naming a set variable executes silently.
-if [[ ! $DEADLINE =~ ^[0-9]+$ ]]; then
-  echo "FATAL: timeout must be a whole number of seconds (got: ${DEADLINE})" >&2
-  exit 2
-fi
-DEADLINE=$((10#$DEADLINE))   # base 10 explicitly, so 0900 isn't read as octal
-
-# RestartCount, not .State.Running: Docker reports Running=true for the whole restart
-# backoff ("we should consider the container running when it is restarting"), and
-# docker_run.sh always uses --restart unless-stopped -- so a crash-looping server
-# never appears stopped. Sampling .State.Status alone has the same hole, since a fast
-# loop spends most of each poll window in `running`.
+# RestartCount baseline, captured before the loop: the comparison below is against
+# this, so a crash that happens while we wait moves it and is caught.
 if ! baseline=$(docker inspect -f '{{.RestartCount}}' mc-server 2>/dev/null); then
   echo "FATAL: no mc-server container -- start it with ./docker_run.sh" >&2
   exit 1
