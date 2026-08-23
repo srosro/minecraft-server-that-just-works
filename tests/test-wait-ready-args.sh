@@ -11,6 +11,12 @@
 #   tests/test-wait-ready-args.sh
 set -uo pipefail
 
+# Bash's own diagnostics are locale-translated, and one of the assertions below keys
+# on "value too great for base". Pin the locale so that string is what bash emits,
+# rather than matching a message this repo doesn't control in a language it might not
+# be running in.
+export LC_ALL=C LANG=C
+
 WAIT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/scripts/wait-ready.sh
 REJECTED='must be a whole number'   # the validator's own words -- see below
 
@@ -39,10 +45,11 @@ reject() {
   echo "ok: rejected -- $arg"
 }
 
-# Accepted means "got past validation". What happens after depends on whether an
-# mc-server container happens to exist on this host, so this asserts only `not 2` and
-# caps the wall clock: with a container present but still booting, an accepted 0900
-# would otherwise poll for fifteen minutes. timeout's 124 is still `not 2`.
+# Accepted means "got past validation without an arithmetic error". What happens after
+# depends on whether an mc-server container exists on this host, so nothing is asserted
+# about that -- only that neither failure message appears. The wall clock is capped
+# because with a container present but still booting, an accepted 0900 would otherwise
+# poll for fifteen minutes.
 accept() {
   local arg=$1 out
   out=$(timeout 3 "$WAIT" "$arg" 2>&1 || true)
