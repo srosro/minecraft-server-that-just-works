@@ -7,6 +7,11 @@ set -euo pipefail
 
 DEADLINE=900
 
+# The old [seconds] argument is gone, so fail loudly rather than silently waiting the
+# fixed deadline: a runbook chaining on `wait-ready.sh 60` out of habit would otherwise
+# hang for fifteen minutes with no signal. The value is never read, only its presence.
+(( $# == 0 )) || { echo "FATAL: takes no arguments -- the timeout is fixed at ${DEADLINE}s" >&2; exit 2; }
+
 # RestartCount baseline, captured before the loop: the comparison below is against
 # this, so a crash that happens while we wait moves it and is caught.
 if ! baseline=$(docker inspect -f '{{.RestartCount}}' mc-server 2>/dev/null); then
