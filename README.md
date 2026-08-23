@@ -199,13 +199,19 @@ and it is one-way. Stop the server first — tarring a running world captures it
 mid-write:
 
 ```bash
-scripts/world.sh backup        # stops the server, tars, prints the archive path
+scripts/backup-world.sh        # stops the server, tars, prints the archive path
 ```
 
 It refuses to run if the server won't stop — tarring a live world captures it
 mid-write. The archive carries the `Dockerfile` alongside the jar, because Paper
 won't start on a Java newer than it was built against, so a rollback has to move the
 pin and the jar together.
+
+> An archive taken *after* a version pull pairs the old-format world with the **new**
+> runtime, so restoring it alone just replays the same one-way migration. To actually
+> roll back such an upgrade, also check the pre-upgrade commit's `Dockerfile`,
+> `server/paper.jar` and `server/plugins/` out of git before booting the archived
+> world. Archives taken before the pull don't have this problem.
 
 **Restoring is deliberately manual.** It runs once a year at most, and automating it
 means deleting the live world before the old one is safely in place — a bad trade.
@@ -277,7 +283,7 @@ server/              THE ONLY THING MOUNTED INTO THE CONTAINER
 
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
-scripts/             ping checker, backup/restore                  │ deliberately kept
+scripts/             ping checker, world backup                    │ deliberately kept
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 

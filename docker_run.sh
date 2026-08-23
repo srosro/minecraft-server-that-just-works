@@ -30,10 +30,11 @@ done
 if (( ${#stale[@]} )); then
   echo "FATAL: found at the repo root: ${stale[*]}" >&2
   echo "" >&2
-  echo "This checkout predates the server/ layout. Those directories are your live" >&2
-  echo "save; git left them because they are untracked at that path. Move each one" >&2
-  echo "under $REPO_DIR/server/ (replacing the older tracked copy, if any), keeping" >&2
-  echo "a tar of it first, then re-run this script." >&2
+  echo "This checkout predates the server/ layout. The pull moved the TRACKED half" >&2
+  echo "of your save into server/ and left the untracked half here, so neither copy" >&2
+  echo "is complete -- merge, do not replace. Archive both first, then fold each" >&2
+  echo "root directory's contents into its server/ counterpart WITHOUT deleting the" >&2
+  echo "destination, and re-run this script." >&2
   exit 1
 fi
 
