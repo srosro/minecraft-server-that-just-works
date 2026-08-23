@@ -62,12 +62,16 @@ The first start is slow and quiet while it fetches libraries — watch it with
 docker logs -f mc-server        # watch the console
 docker stop -t 90 mc-server     # stop (waits for a clean world save)
 docker start mc-server          # start the same container again
-./docker_run.sh                 # rebuild the container (after a config/image change)
+./docker_run.sh                 # recreate the container (after docker build, or
+                                #   a docker_run.sh change; stops cleanly first)
 ```
 
 **Always stop with `docker stop -t 90`.** Minecraft flushes the world on shutdown, and
-a short timeout can cut that off mid-write and corrupt chunks. `docker_run.sh` replaces
-any existing container, so stop cleanly *before* re-running it.
+a short timeout can cut that off mid-write and corrupt chunks. `docker_run.sh` does this
+for you before replacing the container.
+
+Editing `server.properties`, the world, or anything under `plugins/` needs **no** recreate
+— it's all bind-mounted. Just `docker stop -t 90 mc-server && docker start mc-server`.
 
 ---
 
