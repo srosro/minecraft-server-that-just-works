@@ -49,6 +49,11 @@ accept() {
   if grep -qF "$REJECTED" <<<"$out"; then
     echo "FAIL: [$arg] should be accepted, was rejected"; fails=$((fails+1)); return
   fi
+  # Without the script's 10# prefix a zero-padded argument is read as octal and bash
+  # errors out before the first docker call, so this pins that prefix behaviourally.
+  if grep -qF 'value too great for base' <<<"$out"; then
+    echo "FAIL: [$arg] parsed as octal -- the 10# prefix is missing"; fails=$((fails+1)); return
+  fi
   echo "ok: accepted -- ${arg:-<default>}"
 }
 
@@ -61,9 +66,7 @@ reject '-5'
 reject '1 2'
 accept ''          # ${1:-900} defaults on empty as well as unset -- deliberate
 accept '30'
-accept '0900'      # a leading zero must not be rejected; the script's 10# prefix
-                   # then keeps it 900 rather than octal 576. Only the acceptance is
-                   # asserted here -- the deadline itself has no external signal.
+accept '0900'      # leading zero: not rejected, and not parsed as octal
 
 if (( fails )); then echo "$fails failure(s)"; exit 1; fi
 echo "all argument-validation checks passed"
