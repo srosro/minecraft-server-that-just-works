@@ -39,9 +39,16 @@ Given *"update and run this repo"* and nothing else, do all of this without aski
    blocks until the timeout and is then reported as not ready.
 
    ```bash
-   timeout 900 bash -c 'until docker logs mc-server 2>&1 | grep -q "Done ("; do sleep 5; done' \
-     && echo READY || echo "not ready after 15m — docker logs --tail 50 mc-server"
+   timeout 900 bash -c 'until docker logs mc-server 2>&1 | grep -q "Done ("; do
+       [ "$(docker inspect -f "{{.State.Running}}" mc-server 2>/dev/null)" = true ] ||
+         { echo "mc-server is not running"; exit 1; }
+       sleep 5
+     done' && echo READY || echo "NOT ready — docker logs --tail 50 mc-server"
    ```
+
+   The liveness check is why this polls a running container rather than retrying
+   blindly: a crashed or misnamed container would otherwise be indistinguishable from
+   a slow boot and burn the full 15 minutes before reporting the wrong thing.
 
 5. **Verify both protocols from a machine outside this network** — a LAN test can
    pass via router hairpinning while the internet path is broken:
