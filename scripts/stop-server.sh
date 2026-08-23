@@ -18,11 +18,26 @@ stop_mc_server() {
     echo "FATAL: mc-server would not stop; refusing to act on a live world" >&2
     return 1
   }
-  [[ $was_running == true ]] || return 0
+
+  local exit_code
+  exit_code=$(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null || echo 0)
+
+  # Already stopped when we got here, so a 137 could be from this stop or from an
+  # unrelated kill days ago -- there is no way to tell them apart. Blocking would wedge
+  # the operator (and deny the rollback archive) on stale state; staying silent would
+  # hide a genuinely torn world. So: say so, and continue.
+  if [[ $was_running != true ]]; then
+    [[ $exit_code == 137 ]] && {
+      echo "WARNING: mc-server was already stopped, and it last exited on SIGKILL." >&2
+      echo "If that kill was recent, the world may be mid-write -- check it." >&2
+    }
+    return 0
+  fi
 
   # `docker stop` escalates to SIGKILL once its timeout expires and still exits 0, so
-  # the shutdown that actually tears chunks reports success. 137 is SIGKILL.
-  [[ $(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null) == 137 ]] || return 0
+  # the shutdown that actually tears chunks reports success. 137 is SIGKILL. This one
+  # we know is ours: the container was running a moment ago.
+  [[ $exit_code == 137 ]] || return 0
 
   if [[ $(docker inspect -f '{{.State.OOMKilled}}' mc-server 2>/dev/null) == true ]]; then
     echo "FATAL: mc-server was OOM-killed during shutdown; the world may be mid-write." >&2
