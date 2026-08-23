@@ -35,6 +35,14 @@ if docker inspect mc-server >/dev/null 2>&1; then
     echo "FATAL: mc-server would not stop; refusing to archive a live world" >&2
     exit 1
   fi
+  # docker stop SIGKILLs on timeout and still exits 0; a 137 means the world was
+  # killed mid-save, so archiving it would capture exactly the torn state a backup
+  # exists to avoid.
+  if [[ $(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null) == 137 ]]; then
+    echo "FATAL: mc-server was killed after failing to save within 90s; refusing to" >&2
+    echo "archive a possibly torn world." >&2
+    exit 1
+  fi
 fi
 
 # Write aside and rename, so a tar that dies on a full disk leaves no truncated file
