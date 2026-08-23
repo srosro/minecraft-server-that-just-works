@@ -23,11 +23,11 @@ start after that is seconds.
 
 Given *"update and run this repo"* and nothing else, do all of this without asking:
 
-1. **[Back up](#updating-to-the-latest-minecraft) before `git pull`, always.** It costs
-   seconds, and the order is what makes the archive a rollback: taken first it holds the
-   old world *and* the old runtime, so restoring it undoes the upgrade. Taken after the
-   pull it pairs the old world with the new jar, and restoring it just replays the same
-   one-way migration.
+1. **[Back up](#updating-to-the-latest-minecraft) before step 2 replaces anything.**
+   It costs seconds, and the order is what makes the archive a rollback: taken first it
+   holds the old world *and* the old runtime together, so restoring it undoes the
+   upgrade. Taken after the jars are swapped it pairs the old world with the new jar,
+   and restoring that just replays the same one-way migration.
 
 2. **Update the four version-coupled pieces together** — they only work in matched
    sets; updating Geyser alone is the usual mistake.
@@ -201,21 +201,16 @@ mid-write. The archive carries the `Dockerfile` alongside the jar, because Paper
 won't start on a Java newer than it was built against, so a rollback has to move the
 pin and the jar together.
 
-**Restoring is deliberately manual** — it runs once a year at most, and automating it
-means deleting the live world before the old one is safely in place. Because the
-archive holds the world, the jar, the plugins and the `Dockerfile` as they were
-together, putting all of it back restores a consistent server:
+**Restoring is deliberately manual** — it runs once a year at most, and an automated
+version has to delete the live world before the old one is safely back.
 
-```bash
-docker stop -t 90 mc-server
-rm -rf server/world server/world_nether server/world_the_end server/plugins
-tar xzf ~/mc-backup-<stamp>.tar.gz -C server            # world*, plugins, paper.jar
-tar xzf ~/mc-backup-<stamp>.tar.gz -C . Dockerfile      # the Java pin that jar needs
-docker build -t minecraft-server . && ./docker_run.sh
-```
-
-The `rm -rf` first is load-bearing: untarring *over* a newer world leaves new-format
-chunks beside the old `level.dat`.
+The archive holds `world*/`, `plugins/`, `paper.jar` and the `Dockerfile` as they were
+at one moment, so putting all four back gives a consistent server — the `Dockerfile`
+matters because it pins the Java version that jar needs. Three things to get right:
+unpack it somewhere scratch and check it *before* touching the live tree; **replace**
+the world directories rather than untarring over them, since merging leaves new-format
+chunks beside an old `level.dat`; and note the `Dockerfile` is a top-level member of
+the archive, so it belongs at the repo root, not under `server/`.
 
 ---
 
