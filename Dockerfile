@@ -1,5 +1,5 @@
-# Use an official OpenJDK base image
-FROM eclipse-temurin:21-jre-jammy
+# Java 25 — required by Minecraft 26.2. Temurin publishes arm64 (Raspberry Pi 5).
+FROM eclipse-temurin:25-jre-noble
 
 # Set environment variables
 ENV MINECRAFT_USER=docker \
@@ -60,4 +60,4 @@ exec "$@"\n' > /home/docker/entrypoint.sh && \
 ENTRYPOINT ["/home/docker/entrypoint.sh"]
 
 # Default command to run the server
-CMD ["java", "-Xms2G", "-Xmx8G", "-jar", "paper.jar", "nogui"]
+CMD ["java", "-Xms2G", "-Xmx4G", "-jar", "paper.jar", "nogui"]
