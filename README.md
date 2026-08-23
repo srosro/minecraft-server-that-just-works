@@ -136,6 +136,24 @@ even when forwarding is broken):
 ./scripts/mcping.py <public-ip-or-hostname> bedrock
 ```
 
+### Raspberry Pi: the memory cap needs enabling
+
+On Raspberry Pi OS, `docker_run.sh`'s `--memory=5g` is **silently ignored**:
+
+```
+WARNING: Your kernel does not support memory limit capabilities or the cgroup
+is not mounted. Limitation discarded.
+```
+
+The heap is still bounded by `-Xmx`, but the container isn't, so if the JVM
+overruns, the kernel picks the OOM victim by score — and that may be something
+else on the Pi rather than the server. To enable the cap, append to
+`/boot/firmware/cmdline.txt` (one line, no newline) and reboot:
+
+```
+cgroup_enable=memory cgroup_memory=1
+```
+
 ### DNS (manual, on purpose)
 
 DNS is **not** automated here — it's tied to whoever owns the domain. If you want a
