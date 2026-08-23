@@ -16,17 +16,16 @@ start after that is seconds.
 
 ## For Claude: the one-shot runbook
 
-> **One-time, if this checkout predates the `server/` layout** (world files sitting at
-> the repo root rather than under `server/`): **stop the server before pulling.** The
-> pull relocates `world/` out from under a running Paper process, which loses its
-> in-flight writes and then flushes a partial world to the old path on shutdown.
+> **Heads-up on 26.2:** it consolidates the nether and end into
+> `world/dimensions/`, replacing the old sibling `world_nether/` and `world_the_end/`
+> directories. The migration is automatic on first boot; just don't be surprised when
+> those folders vanish.
 >
-> ```bash
-> docker stop -t 90 mc-server
-> git pull
-> ls -d world world_nether world_the_end 2>/dev/null   # must print nothing
-> ./docker_run.sh
-> ```
+> **One-time, if this checkout predates the `server/` layout:** stop the server
+> *before* pulling — the pull relocates `world/` out from under a live Paper process,
+> losing its in-flight writes. `git` also leaves untracked files behind, so worlds can
+> survive at the old path; `docker_run.sh` refuses to start when it finds one rather
+> than silently generating an empty world, and tells you what to move.
 
 Given *"update and run this repo"* and nothing else, do all of this without asking:
 
@@ -200,23 +199,16 @@ and it is one-way. Stop the server first — tarring a running world captures it
 mid-write:
 
 ```bash
-# Only stop what exists, and never archive past a stop that actually failed --
-# tarring a live world captures it mid-write.
-if docker inspect mc-server >/dev/null 2>&1; then
-  docker stop -t 90 mc-server || { echo "stop failed — refusing to archive a live world"; exit 1; }
-fi
-tar czf ~/mc-backup-$(date +%F).tar.gz -C server world world_nether world_the_end plugins paper.jar
+scripts/world.sh backup                        # prints the archive path
+scripts/world.sh restore ~/mc-backup-<date>.tar.gz && ./docker_run.sh
 ```
 
-To restore it, unpack **into `server/`** — the archive holds `world/` at its root, so
-extracting from the repo root instead puts it outside the mount, where the server
-never reads it and the rollback silently does nothing:
-
-```bash
-docker stop -t 90 mc-server
-tar xzf ~/mc-backup-<date>.tar.gz -C server
-./docker_run.sh
-```
+Both stop the server first and refuse to continue if it won't stop, because tarring
+or overwriting a live world captures it mid-write. `restore` **replaces** the worlds
+rather than merging into them — untarring over an upgraded world would leave
+new-format chunks beside the old `level.dat` — and the archive carries the
+`Dockerfile` alongside the jar, since Paper won't start on a Java newer than it was
+built against and a rollback has to move both together.
 
 ---
 
@@ -275,13 +267,13 @@ Bedrock players must type the port manually. Java players usually don't.
 ```
 server/              THE ONLY THING MOUNTED INTO THE CONTAINER
   paper.jar          the server
-  world/ world_nether/ world_the_end/   saves (tracked in git — this repo IS the backup)
+  world/             the save, all dimensions (tracked in git — this repo IS the backup)
   plugins/           Geyser, Floodgate, spark
   server.properties  MOTD, difficulty, whitelist, player cap
 
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
-scripts/             ping checker                                │ deliberately kept
+scripts/             ping checker, backup/restore                  │ deliberately kept
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 

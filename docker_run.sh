@@ -18,6 +18,19 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# A checkout from before the server/ split has the worlds at the repo root. Starting
+# with the new mount would silently generate an empty world instead of loading it, so
+# fail loudly rather than quietly stranding the save. This check lives here because
+# docker_run.sh exists in the old checkout too -- a README note would not be read
+# until after the pull that causes the problem.
+for stale in world world_nether world_the_end; do
+  [[ -d "$REPO_DIR/$stale" ]] || continue
+  echo "FATAL: $stale/ found at the repo root -- this checkout predates the server/" >&2
+  echo "layout and the pull did not move it (git leaves untracked files behind)." >&2
+  echo "Move it: mv $stale $REPO_DIR/server/$stale   then re-run." >&2
+  exit 1
+done
+
 docker stop -t 90 mc-server 2>/dev/null || true
 docker rm -f mc-server 2>/dev/null || true
 
