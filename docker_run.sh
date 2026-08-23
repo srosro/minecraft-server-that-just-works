@@ -21,21 +21,10 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # A swallowed stop failure followed by `rm -f` is a SIGKILL to a running server,
 # which is the mid-save chunk corruption this script's own -t 90 exists to avoid.
 # Same inspect-gated, fail-loud handling as scripts/backup-world.sh.
-if docker inspect mc-server >/dev/null 2>&1; then
-  if ! docker stop -t 90 mc-server >/dev/null; then
-    echo "FATAL: mc-server would not stop; refusing to force-remove a live server" >&2
-    exit 1
-  fi
-  # `docker stop` escalates to SIGKILL once the timeout expires and STILL exits 0, so
-  # the case that actually corrupts chunks -- a save running past 90s -- has to be
-  # caught after the fact. 137 is SIGKILL.
-  if [[ $(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null) == 137 ]]; then
-    echo "FATAL: mc-server was killed after failing to save within 90s. The world may" >&2
-    echo "be mid-write. Inspect it before starting again; do not just re-run." >&2
-    exit 1
-  fi
-  docker rm mc-server >/dev/null
-fi
+# shellcheck source=scripts/stop-server.sh
+source "$REPO_DIR/scripts/stop-server.sh"
+stop_mc_server || exit 1
+docker rm mc-server >/dev/null 2>&1 || true
 
 # Floodgate rewrites key.pem with the default mask whenever it regenerates, so the
 # durable protection is on the directory: 700 denies traversal regardless of the

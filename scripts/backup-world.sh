@@ -30,20 +30,9 @@ for f in "$out" "$out.part"; do
   fi
 done
 
-if docker inspect mc-server >/dev/null 2>&1; then
-  if ! docker stop -t 90 mc-server >/dev/null; then
-    echo "FATAL: mc-server would not stop; refusing to archive a live world" >&2
-    exit 1
-  fi
-  # docker stop SIGKILLs on timeout and still exits 0; a 137 means the world was
-  # killed mid-save, so archiving it would capture exactly the torn state a backup
-  # exists to avoid.
-  if [[ $(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null) == 137 ]]; then
-    echo "FATAL: mc-server was killed after failing to save within 90s; refusing to" >&2
-    echo "archive a possibly torn world." >&2
-    exit 1
-  fi
-fi
+# shellcheck source=scripts/stop-server.sh
+source "$REPO_DIR/scripts/stop-server.sh"
+stop_mc_server || exit 1
 
 # Write aside and rename, so a tar that dies on a full disk leaves no truncated file
 # wearing the archive's name -- and no orphan eating the space the retry needs.
