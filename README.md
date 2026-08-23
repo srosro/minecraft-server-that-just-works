@@ -69,9 +69,7 @@ Bookworm path there lands in a file the bootloader never reads.
 Confirm it took, after the reboot:
 
 ```bash
-docker info 2>/dev/null | grep -q 'No memory limit support' \
-  && echo "STILL DISABLED — the edit did not take" \
-  || echo "memory cap is active"
+docker info --format '{{.MemoryLimit}}'   # true = cap enforced, false = still ignored
 ```
 
 ---
