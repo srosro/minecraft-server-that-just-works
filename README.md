@@ -32,23 +32,17 @@ Given *"update and run this repo"* and nothing else, do all of this without aski
 2. **Update the four version-coupled pieces together** — they only work in matched
    sets; updating Geyser alone is the usual mistake.
 3. **Build and run** — `docker build -t minecraft-server . && ./docker_run.sh`.
-4. **Wait for the ready line.** A first boot downloads Paper's libraries and migrates
-   the world, so give it minutes. Poll rather than follow — `docker logs -f | grep -qm1`
-   looks right but hangs: `grep` exits on the match while `docker logs -f` keeps the
-   pipe open until it writes again, so a server that went quiet *after* becoming ready
-   blocks until the timeout and is then reported as not ready.
+4. **Wait until it's ready** — `scripts/wait-ready.sh`. A first boot downloads
+   Paper's libraries and migrates the world, so give it minutes. It exits 0 on ready
+   and non-zero if the server crashed, isn't there, or ran out of time, so you can
+   chain on it.
 
-   ```bash
-   timeout 900 bash -c 'until docker logs mc-server 2>&1 | grep -q "Done ("; do
-       [ "$(docker inspect -f "{{.State.Running}}" mc-server 2>/dev/null)" = true ] ||
-         { echo "mc-server is not running"; exit 1; }
-       sleep 5
-     done' && echo READY || echo "NOT ready — docker logs --tail 50 mc-server"
-   ```
-
-   The liveness check is why this polls a running container rather than retrying
-   blindly: a crashed or misnamed container would otherwise be indistinguishable from
-   a slow boot and burn the full 15 minutes before reporting the wrong thing.
+   Three things it gets right that an obvious `docker logs | grep` does not: it
+   matches *Paper's* ready line rather than Geyser's earlier one (Geyser is up before
+   25565 is bound), it reads only the current boot (`docker logs` replays history, so
+   a restarted container still carries the last run's ready line), and it detects a
+   crash via `RestartCount` — Docker reports `Running=true` throughout restart
+   backoff, so a crash-looping server never looks stopped.
 
 5. **Verify both protocols from a machine outside this network** — a LAN test can
    pass via router hairpinning while the internet path is broken:
@@ -294,7 +288,7 @@ server/              THE ONLY THING MOUNTED INTO THE CONTAINER
 
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
-scripts/             ping checker, backup, clean stop              │ deliberately kept
+scripts/             ping checker, backup, stop, wait-ready         │ deliberately kept
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 
