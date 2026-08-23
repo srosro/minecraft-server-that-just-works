@@ -14,6 +14,6 @@ EXPOSE 25565 19132/udp
 # that bind-mounted world files stay writable from the host.
 USER 1000:1000
 
-# The single home for heap settings -- docker_run.sh forwards "$@" rather than
-# repeating this, so the two cannot drift.
+# The single home for heap settings -- docker_run.sh passes no java args, so change
+# this line and rebuild. Keep -Xmx below --memory in docker_run.sh (5g).
 CMD ["java", "-Xms2G", "-Xmx4G", "-jar", "paper.jar", "nogui"]

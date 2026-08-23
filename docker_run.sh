@@ -15,6 +15,9 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
+# INVARIANT: anything the host executes out of this repo gets a :ro mount below.
+# The server is internet-facing and runs third-party plugins, so whatever stays
+# writable is code those plugins can hand back to the operator to run.
 docker stop -t 90 mc-server 2>/dev/null || true
 docker rm -f mc-server 2>/dev/null || true
 
