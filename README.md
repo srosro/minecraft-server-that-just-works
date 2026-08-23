@@ -168,6 +168,16 @@ recreate it with `./docker_run.sh` rather than `docker start`.)
 ## Updating to the latest Minecraft
 
 Minecraft Java moved to calendar versioning: releases now look like `26.2`, not `1.21.4`.
+
+> **Java and Bedrock have separate version numbers, and they look confusingly alike.**
+> Java is `26.1`, `26.2`, … — that's what Paper builds and what
+> `piston-meta.mojang.com`'s manifest calls the latest *release*. Bedrock is `26.40`,
+> `26.44`, `26.45`, … — a different product on a different cadence. A Bedrock client
+> reporting `26.44` is **not** newer than a Java server on `26.2`; Geyser is what
+> bridges them, and the pair to check is "does this Geyser accept that Bedrock
+> version", not "is my Paper number bigger". Chasing a Bedrock number in the Paper API
+> finds nothing, because it isn't a Java version.
+
 Four things move together, and **they must be consistent** or the server won't boot:
 
 | Piece | Where it comes from |
