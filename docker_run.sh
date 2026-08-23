@@ -25,7 +25,7 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # after the pull that strands the save.
 stale=()
 for d in world world_nether world_the_end; do
-  [[ -d "$REPO_DIR/$d" ]] && stale+=("$d")
+  if [[ -d "$REPO_DIR/$d" ]]; then stale+=("$d"); fi
 done
 if (( ${#stale[@]} )); then
   echo "FATAL: found at the repo root: ${stale[*]}" >&2

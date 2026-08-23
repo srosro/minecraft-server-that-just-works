@@ -31,10 +31,12 @@ case "${1:-}" in
     # same-day re-run -- a retry, a second bump, the operator repeating "update and
     # run" -- would otherwise overwrite the pre-upgrade copy with a post-upgrade one.
     out=${2:-~/mc-backup-$(date +%F-%H%M%S).tar.gz}
-    if [[ -e $out ]]; then
-      echo "FATAL: $out already exists; pass an explicit path" >&2
-      exit 1
-    fi
+    for existing in "$out" "$out.part"; do
+      if [[ -e $existing ]]; then
+        echo "FATAL: $existing already exists; pass an explicit path" >&2
+        exit 1
+      fi
+    done
 
     mapfile -t worlds < <(world_dirs)
     if (( ${#worlds[@]} == 0 )); then
@@ -54,6 +56,11 @@ case "${1:-}" in
     # The Dockerfile rides along: it pins the Java version this jar needs, and Paper
     # refuses to start on a Java newer than it was built against, so a rollback has
     # to move the pin and the jar together.
+    # Clean up the partial on any exit path: a tar that dies on a full disk would
+    # otherwise leave a multi-GB orphan that no later run reuses (the default name is
+    # second-granular), permanently consuming the space the retry needs. Harmless
+    # after a successful mv, when the file is already gone.
+    trap 'rm -f "$out.part"' EXIT
     tar czf "$out.part" -C "$REPO_DIR" Dockerfile -C "$REPO_DIR/server" \
       "${worlds[@]}" plugins paper.jar
     mv "$out.part" "$out"
