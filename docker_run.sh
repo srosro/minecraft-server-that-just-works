@@ -15,9 +15,15 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# INVARIANT: anything the host executes out of this repo gets a :ro mount below.
-# The server is internet-facing and runs third-party plugins, so whatever stays
-# writable is code those plugins can hand back to the operator to run.
+# Anything the host executes out of this repo belongs in here. The server is
+# internet-facing and runs third-party plugins, so whatever stays writable is code
+# those plugins can hand back to the operator to run. Add to this list, not below.
+HOST_EXECUTABLE_RO=(
+  -v "$REPO_DIR/scripts:/minecraft/scripts:ro"
+  -v "$REPO_DIR/docker_run.sh:/minecraft/docker_run.sh:ro"
+  -v "$REPO_DIR/Dockerfile:/minecraft/Dockerfile:ro"
+)
+
 docker stop -t 90 mc-server 2>/dev/null || true
 docker rm -f mc-server 2>/dev/null || true
 
@@ -30,8 +36,6 @@ docker run -d \
   -p 19132:19132/udp \
   -v "$REPO_DIR:/minecraft" \
   -v /minecraft/.git \
-  -v "$REPO_DIR/scripts:/minecraft/scripts:ro" \
-  -v "$REPO_DIR/docker_run.sh:/minecraft/docker_run.sh:ro" \
-  -v "$REPO_DIR/Dockerfile:/minecraft/Dockerfile:ro" \
+  "${HOST_EXECUTABLE_RO[@]}" \
   -w /minecraft \
   minecraft-server

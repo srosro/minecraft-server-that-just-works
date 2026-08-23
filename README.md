@@ -18,15 +18,11 @@ start after that is seconds.
 
 Given *"update and run this repo"* and nothing else, do all of this without asking:
 
-1. **Check whether the Minecraft version is changing** — compare
-   [the sources](#updating-to-the-latest-minecraft) against `paper.jar`. If it is,
-   back up **before touching any jar**, or the archive captures the new jars beside
-   the old world and restoring it just re-runs the same one-way upgrade:
-
-   ```bash
-   docker stop -t 90 mc-server 2>/dev/null
-   tar czf ~/mc-backup-$(date +%F).tar.gz world world_nether world_the_end plugins paper.jar
-   ```
+1. **[Back up](#updating-to-the-latest-minecraft) before touching any jar.** Always —
+   it costs seconds, and deciding whether the version changed is a judgement call you'd
+   have to make *before* you have anything to compare against. Backing up afterwards is
+   worse than not backing up: the archive captures the new jars beside the old world, so
+   restoring it just re-runs the same one-way upgrade.
 
 2. **Update the four version-coupled pieces together** — they only work in matched
    sets; updating Geyser alone is the usual mistake.
@@ -188,9 +184,11 @@ unzip -p plugins/Geyser-Spigot.jar \
 > The Geyser wiki's "supported versions" page lags its releases. Trust the jar, not the page.
 
 **Back up the world before any version jump.** Minecraft upgrades world format on load
-and it is one-way:
+and it is one-way. Stop the server first — tarring a running world captures it
+mid-write:
 
 ```bash
+docker stop -t 90 mc-server || true          # || true: no container yet on a fresh clone
 tar czf ~/mc-backup-$(date +%F).tar.gz world world_nether world_the_end plugins paper.jar
 ```
 
