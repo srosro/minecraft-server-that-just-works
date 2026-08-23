@@ -12,3 +12,6 @@
 # any username, including an op -- Floodgate players bypass Mojang auth by
 # design. Regenerated on first start; must never be committed.
 /plugins/floodgate/key.pem
+
+# Minecraft's pre-upgrade level.dat backups
+*.dat_old

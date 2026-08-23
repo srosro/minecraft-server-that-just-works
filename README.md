@@ -97,6 +97,12 @@ docker start mc-server          # start the same container again
                                 #   a docker_run.sh change; stops cleanly first)
 ```
 
+Heap lives in one place — the `CMD` in the `Dockerfile`. Change it there and rebuild;
+raising it past `--memory` in `docker_run.sh` is what causes the OOM kill above.
+
+```bash
+```
+
 **Always stop with `docker stop -t 90`.** Minecraft flushes the world on shutdown, and
 a short timeout can cut that off mid-write and corrupt chunks. `docker_run.sh` does this
 for you before replacing the container.
@@ -173,10 +179,10 @@ DNS is **not** automated here — it's tied to whoever owns the domain. If you w
 hostname instead of a bare IP:
 
 - Add an **A record** pointing at your public IP.
-- On a residential connection that IP changes, so pair it with dynamic DNS.
-  `scripts/ddns-update.sh` handles the Namecheap flavour: enable Dynamic DNS on the
-  domain, put the generated password in `~/.config/namecheap-ddns.pass` (mode 600),
-  and run it from a timer.
+- On a residential connection that IP changes, so pair it with your registrar's
+  dynamic DNS and a timer. Keep that updater **outside this directory** — it runs on
+  the host with your credentials, and everything here is writable by the server's
+  plugins.
 - Java clients can then use the bare hostname (25565 is their default port). **Bedrock
   clients must be given the port explicitly** — there's no SRV fallback.
 

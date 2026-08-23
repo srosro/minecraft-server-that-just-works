@@ -6,7 +6,7 @@
 # nothing populates it -- and the server would have no jar to run.
 #
 # The java command lives in the image's CMD, not here, so heap settings have a
-# single home. Override it by appending args: ./docker_run.sh java -Xmx6G ...
+# single home: change CMD in the Dockerfile and rebuild.
 #
 # Safe to re-run: any existing mc-server is shut down cleanly first. The stop
 # comes before the remove because `docker rm -f` sends SIGKILL, and killing the
@@ -27,5 +27,8 @@ docker run -d \
   -p 19132:19132/udp \
   -v "$REPO_DIR:/minecraft" \
   -v /minecraft/.git \
+  -v "$REPO_DIR/scripts:/minecraft/scripts:ro" \
+  -v "$REPO_DIR/docker_run.sh:/minecraft/docker_run.sh:ro" \
+  -v "$REPO_DIR/Dockerfile:/minecraft/Dockerfile:ro" \
   -w /minecraft \
-  minecraft-server "$@"
+  minecraft-server
