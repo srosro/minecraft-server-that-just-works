@@ -16,6 +16,18 @@ start after that is seconds.
 
 ## For Claude: the one-shot runbook
 
+> **One-time, if this checkout predates the `server/` layout** (world files sitting at
+> the repo root rather than under `server/`): **stop the server before pulling.** The
+> pull relocates `world/` out from under a running Paper process, which loses its
+> in-flight writes and then flushes a partial world to the old path on shutdown.
+>
+> ```bash
+> docker stop -t 90 mc-server
+> git pull
+> ls -d world world_nether world_the_end 2>/dev/null   # must print nothing
+> ./docker_run.sh
+> ```
+
 Given *"update and run this repo"* and nothing else, do all of this without asking:
 
 1. **[Back up](#updating-to-the-latest-minecraft) before touching any jar.** Always —
@@ -196,6 +208,16 @@ fi
 tar czf ~/mc-backup-$(date +%F).tar.gz -C server world world_nether world_the_end plugins paper.jar
 ```
 
+To restore it, unpack **into `server/`** — the archive holds `world/` at its root, so
+extracting from the repo root instead puts it outside the mount, where the server
+never reads it and the rollback silently does nothing:
+
+```bash
+docker stop -t 90 mc-server
+tar xzf ~/mc-backup-<date>.tar.gz -C server
+./docker_run.sh
+```
+
 ---
 
 ## Networking
@@ -226,9 +248,9 @@ hostname instead of a bare IP:
 
 - Add an **A record** pointing at your public IP.
 - On a residential connection that IP changes, so pair it with your registrar's
-  dynamic DNS and a timer. Keep that updater outside `server/` — anything in there is
-  writable by the server's plugins, and this one runs on the host with your
-  registrar credentials.
+  dynamic DNS and a timer. Keep that updater **outside this repo entirely** — it holds
+  your registrar credentials and this tree is public. `server/` is doubly wrong: the
+  server's plugins can write there.
 - Java clients can then use the bare hostname (25565 is their default port). **Bedrock
   clients must be given the port explicitly** — there's no SRV fallback.
 
