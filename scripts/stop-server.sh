@@ -1,51 +1,47 @@
 #!/usr/bin/env bash
-# Shared clean-shutdown helper: source this, then call stop_mc_server.
+# The canonical way to stop this server. Use it instead of `docker stop` anywhere:
+# a raw stop escalates to SIGKILL once its timeout expires and still reports success,
+# so it can tear a world mid-save and tell you it went fine.
 #
-# Both callers must refuse to proceed over a world that may be mid-write -- one is
-# about to recreate the container over it, the other about to archive it as a rollback.
+# Exits 0 when the server is stopped (or was never there), non-zero when it isn't
+# safe to act on the world.
+set -euo pipefail
 
-stop_mc_server() {
-  docker inspect mc-server >/dev/null 2>&1 || return 0   # nothing to stop
+# A failing `docker ps` means the daemon is unreachable, which is NOT the same as
+# "no such container". Reading one as the other would let a backup archive a world
+# that is still running.
+if ! existing=$(docker ps -aq --filter 'name=^mc-server$'); then
+  echo "FATAL: cannot reach the Docker daemon; refusing to act on a possibly-live world" >&2
+  exit 1
+fi
+[[ -n $existing ]] || exit 0   # confirmed absent, nothing to do
 
-  # Captured BEFORE the stop: .State.ExitCode is persisted from whenever the container
-  # last exited, so an already-stopped container carries a stale code. Without this
-  # gate a 137 from an unrelated earlier OOM or `docker kill` would refuse forever,
-  # with no way to clear it.
-  local was_running
-  was_running=$(docker inspect -f '{{.State.Running}}' mc-server 2>/dev/null || echo false)
+# Captured before the stop: .State.ExitCode is persisted from whenever the container
+# last exited, so an already-stopped one carries a code this stop did not produce.
+was_running=$(docker inspect -f '{{.State.Running}}' mc-server)
 
-  docker stop -t 90 mc-server >/dev/null || {
-    echo "FATAL: mc-server would not stop; refusing to act on a live world" >&2
-    return 1
-  }
+if ! docker stop -t 90 mc-server >/dev/null; then
+  echo "FATAL: mc-server would not stop; refusing to act on a live world" >&2
+  exit 1
+fi
 
-  local exit_code
-  exit_code=$(docker inspect -f '{{.State.ExitCode}}' mc-server 2>/dev/null || echo 0)
+exit_code=$(docker inspect -f '{{.State.ExitCode}}' mc-server)
 
-  # Already stopped when we got here, so a 137 could be from this stop or from an
-  # unrelated kill days ago -- there is no way to tell them apart. Blocking would wedge
-  # the operator (and deny the rollback archive) on stale state; staying silent would
-  # hide a genuinely torn world. So: say so, and continue.
-  if [[ $was_running != true ]]; then
-    [[ $exit_code == 137 ]] && {
-      echo "WARNING: mc-server was already stopped, and it last exited on SIGKILL." >&2
-      echo "If that kill was recent, the world may be mid-write -- check it." >&2
-    }
-    return 0
+if [[ $was_running != true ]]; then
+  # Unattributable: a 137 here could be from this stop or a kill last week. Blocking
+  # would wedge the operator on stale state; silence would hide a torn world.
+  if [[ $exit_code == 137 ]]; then
+    echo "WARNING: mc-server was already stopped and last exited on SIGKILL." >&2
+    echo "If that was recent, the world may be mid-write -- check it." >&2
   fi
+  exit 0
+fi
 
-  # `docker stop` escalates to SIGKILL once its timeout expires and still exits 0, so
-  # the shutdown that actually tears chunks reports success. 137 is SIGKILL. This one
-  # we know is ours: the container was running a moment ago.
-  [[ $exit_code == 137 ]] || return 0
-
-  if [[ $(docker inspect -f '{{.State.OOMKilled}}' mc-server 2>/dev/null) == true ]]; then
-    echo "FATAL: mc-server was OOM-killed during shutdown; the world may be mid-write." >&2
-  else
-    echo "FATAL: mc-server did not finish saving within 90s and was killed; the world" >&2
-    echo "may be mid-write." >&2
-  fi
-  echo "Check the world before using it again, then clear this state with:" >&2
-  echo "  docker rm mc-server" >&2
-  return 1
-}
+# This one is ours: it was running a moment ago. 137 is SIGKILL, from the stop
+# timeout expiring or from the memory cap.
+if [[ $exit_code == 137 ]]; then
+  echo "FATAL: mc-server was killed during shutdown -- the save exceeded 90s, or it" >&2
+  echo "hit the memory cap. The world may be mid-write. Check it, then clear this" >&2
+  echo "state with: docker rm mc-server" >&2
+  exit 1
+fi

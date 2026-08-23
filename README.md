@@ -139,7 +139,7 @@ The first start is slow and quiet while it fetches libraries — watch it with
 
 ```bash
 docker logs -f mc-server        # watch the console
-docker stop -t 90 mc-server     # stop (waits for a clean world save)
+scripts/stop-server.sh          # stop (waits for a clean save, refuses if torn)
 docker start mc-server          # start the same container again
 ./docker_run.sh                 # recreate the container (after docker build, or
                                 #   a docker_run.sh change; stops cleanly first)
@@ -148,12 +148,14 @@ docker start mc-server          # start the same container again
 Heap lives in one place — the `CMD` in the `Dockerfile`. Change it there and rebuild;
 raising it past `--memory` in `docker_run.sh` is what causes the OOM kill above.
 
-**Always stop with `docker stop -t 90`.** Minecraft flushes the world on shutdown, and
-a short timeout can cut that off mid-write and corrupt chunks. `docker_run.sh` does this
-for you before replacing the container.
+**Always stop with `scripts/stop-server.sh`.** Minecraft flushes the world on shutdown,
+and a raw `docker stop` escalates to SIGKILL once its timeout expires *and still reports
+success* — so it can tear a world mid-save and tell you it went fine. The script waits,
+then checks whether the shutdown was actually clean and refuses to hand you a torn
+world. `docker_run.sh` and `scripts/backup-world.sh` both run it.
 
 Editing `server/server.properties`, the world, or anything under `server/plugins/` needs **no** recreate
-— it's all bind-mounted. Just `docker stop -t 90 mc-server && docker start mc-server`.
+— it's all bind-mounted. Just `scripts/stop-server.sh && docker start mc-server`.
 
 ---
 
@@ -208,7 +210,7 @@ The archive holds `world*/`, `plugins/`, `paper.jar` and the `Dockerfile` as the
 at one moment, so putting all four back gives a consistent server — the `Dockerfile`
 matters because it pins the Java version that jar needs.
 
-Stop the server first (`docker stop -t 90 mc-server`), and when everything is in place
+Stop the server first (`scripts/stop-server.sh`), and when everything is in place
 rebuild and start it (`docker build -t minecraft-server . && ./docker_run.sh`) — the
 `Dockerfile` you just restored only takes effect on a rebuild. In between, three
 things to get right: unpack the archive somewhere scratch and check it *before*
@@ -280,7 +282,7 @@ server/              THE ONLY THING MOUNTED INTO THE CONTAINER
 
 Dockerfile           pins the Java version Minecraft requires   ─┐ read and executed
 docker_run.sh        the one command that starts it              │ on the HOST, so
-scripts/             ping checker, world backup                    │ deliberately kept
+scripts/             ping checker, backup, clean stop              │ deliberately kept
 README.md            this file, and the runbook agents follow   ─┘ out of the mount
 ```
 

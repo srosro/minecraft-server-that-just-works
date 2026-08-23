@@ -21,9 +21,7 @@ REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # A swallowed stop failure followed by `rm -f` is a SIGKILL to a running server,
 # which is the mid-save chunk corruption this script's own -t 90 exists to avoid.
 # Same inspect-gated, fail-loud handling as scripts/backup-world.sh.
-# shellcheck source=scripts/stop-server.sh
-source "$REPO_DIR/scripts/stop-server.sh"
-stop_mc_server || exit 1
+"$REPO_DIR/scripts/stop-server.sh"
 docker rm mc-server >/dev/null 2>&1 || true
 
 # Floodgate rewrites key.pem with the default mask whenever it regenerates, so the
