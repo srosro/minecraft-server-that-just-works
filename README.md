@@ -40,6 +40,7 @@ Bedrock players join through Geyser, and Floodgate lets them in without a Java a
   Dockerfile's `CMD` together; the cap must stay above the heap or the kernel
   OOM-kills the server mid-save. **On Raspberry Pi OS that cap does nothing until
   you enable it — see below.**
+- Ports `25565/tcp` and `19132/udp` reachable — see [Networking](#networking)
 
 ### Raspberry Pi: the memory cap needs enabling
 
@@ -68,9 +69,10 @@ Bookworm path there lands in a file the bootloader never reads.
 Confirm it took, after the reboot:
 
 ```bash
-docker info 2>/dev/null | grep -i 'memory limit'   # no "No memory limit support"
+docker info 2>/dev/null | grep -q 'No memory limit support' \
+  && echo "STILL DISABLED — the edit did not take" \
+  || echo "memory cap is active"
 ```
-- Ports `25565/tcp` and `19132/udp` reachable — see [Networking](#networking)
 
 ---
 
