@@ -20,20 +20,14 @@ start after that is seconds.
 > `world/dimensions/`, replacing the old sibling `world_nether/` and `world_the_end/`
 > directories. The migration is automatic on first boot; just don't be surprised when
 > those folders vanish.
->
-> **One-time, if this checkout predates the `server/` layout:** stop the server
-> *before* pulling — the pull relocates `world/` out from under a live Paper process,
-> losing its in-flight writes. `git` also leaves untracked files behind, so worlds can
-> survive at the old path; `docker_run.sh` refuses to start when it finds one rather
-> than silently generating an empty world, and tells you what to move.
 
 Given *"update and run this repo"* and nothing else, do all of this without asking:
 
-1. **[Back up](#updating-to-the-latest-minecraft) before touching any jar.** Always —
-   it costs seconds, and deciding whether the version changed is a judgement call you'd
-   have to make *before* you have anything to compare against. Backing up afterwards is
-   worse than not backing up: the archive captures the new jars beside the old world, so
-   restoring it just re-runs the same one-way upgrade.
+1. **[Back up](#updating-to-the-latest-minecraft) before `git pull`, always.** It costs
+   seconds, and the order is what makes the archive a rollback: taken first it holds the
+   old world *and* the old runtime, so restoring it undoes the upgrade. Taken after the
+   pull it pairs the old world with the new jar, and restoring it just replays the same
+   one-way migration.
 
 2. **Update the four version-coupled pieces together** — they only work in matched
    sets; updating Geyser alone is the usual mistake.
@@ -207,18 +201,21 @@ mid-write. The archive carries the `Dockerfile` alongside the jar, because Paper
 won't start on a Java newer than it was built against, so a rollback has to move the
 pin and the jar together.
 
-> An archive taken *after* a version pull pairs the old-format world with the **new**
-> runtime, so restoring it alone just replays the same one-way migration. To actually
-> roll back such an upgrade, also check the pre-upgrade commit's `Dockerfile`,
-> `server/paper.jar` and `server/plugins/` out of git before booting the archived
-> world. Archives taken before the pull don't have this problem.
+**Restoring is deliberately manual** — it runs once a year at most, and automating it
+means deleting the live world before the old one is safely in place. Because the
+archive holds the world, the jar, the plugins and the `Dockerfile` as they were
+together, putting all of it back restores a consistent server:
 
-**Restoring is deliberately manual.** It runs once a year at most, and automating it
-means deleting the live world before the old one is safely in place — a bad trade.
-With the server stopped, move the current directories aside (don't untar *over* them:
-that leaves new-format chunks beside an old `level.dat`), extract into `server/`, put
-the archive's `Dockerfile` back at the repo root, then `docker build -t minecraft-server .`
-and `./docker_run.sh`.
+```bash
+docker stop -t 90 mc-server
+rm -rf server/world server/world_nether server/world_the_end server/plugins
+tar xzf ~/mc-backup-<stamp>.tar.gz -C server            # world*, plugins, paper.jar
+tar xzf ~/mc-backup-<stamp>.tar.gz -C . Dockerfile      # the Java pin that jar needs
+docker build -t minecraft-server . && ./docker_run.sh
+```
+
+The `rm -rf` first is load-bearing: untarring *over* a newer world leaves new-format
+chunks beside the old `level.dat`.
 
 ---
 
