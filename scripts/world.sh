@@ -27,20 +27,36 @@ world_dirs() {
 
 case "${1:-}" in
   backup)
-    out=${2:-~/mc-backup-$(date +%F).tar.gz}
+    # Seconds, not just the date: this archive is the only rollback there is, and a
+    # same-day re-run -- a retry, a second bump, the operator repeating "update and
+    # run" -- would otherwise overwrite the pre-upgrade copy with a post-upgrade one.
+    out=${2:-~/mc-backup-$(date +%F-%H%M%S).tar.gz}
+    if [[ -e $out ]]; then
+      echo "FATAL: $out already exists; pass an explicit path" >&2
+      exit 1
+    fi
 
     mapfile -t worlds < <(world_dirs)
-    (( ${#worlds[@]} )) || { echo "FATAL: no world directory under server/" >&2; exit 1; }
+    if (( ${#worlds[@]} == 0 )); then
+      echo "FATAL: no world directory under server/" >&2
+      exit 1
+    fi
 
-    docker inspect mc-server >/dev/null 2>&1 &&
-      { docker stop -t 90 mc-server >/dev/null \
-          || { echo "FATAL: mc-server would not stop; refusing to archive a live world" >&2; exit 1; }; }
+    if docker inspect mc-server >/dev/null 2>&1; then
+      if ! docker stop -t 90 mc-server >/dev/null; then
+        echo "FATAL: mc-server would not stop; refusing to archive a live world" >&2
+        exit 1
+      fi
+    fi
 
+    # Write aside and rename on success, so a tar that dies partway (ENOSPC on a Pi
+    # archiving a multi-GB world) leaves no truncated file wearing the archive's name.
     # The Dockerfile rides along: it pins the Java version this jar needs, and Paper
     # refuses to start on a Java newer than it was built against, so a rollback has
     # to move the pin and the jar together.
-    tar czf "$out" -C "$REPO_DIR" Dockerfile -C "$REPO_DIR/server" \
+    tar czf "$out.part" -C "$REPO_DIR" Dockerfile -C "$REPO_DIR/server" \
       "${worlds[@]}" plugins paper.jar
+    mv "$out.part" "$out"
     echo "$out"
     ;;
   *)

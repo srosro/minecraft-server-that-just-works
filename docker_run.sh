@@ -18,25 +18,24 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-# A checkout from before the server/ split has the worlds at the repo root. Starting
-# with the new mount would silently generate an empty world instead of loading it, so
-# fail loudly rather than quietly stranding the save. This check lives here because
-# docker_run.sh exists in the old checkout too -- a README note would not be read
-# until after the pull that causes the problem.
-for stale in world world_nether world_the_end; do
-  [[ -d "$REPO_DIR/$stale" ]] || continue
-  echo "FATAL: $stale/ found at the repo root. This checkout predates the server/" >&2
-  echo "layout, and git left it behind because it is untracked there." >&2
-  echo "" >&2
-  echo "The root copy is your live save. server/$stale is the tracked snapshot," >&2
-  echo "which is older. Keep a copy, then let the live one win:" >&2
-  echo "" >&2
-  echo "  tar czf ~/pre-migration-\$(date +%F).tar.gz $stale" >&2
-  echo "  rm -rf $REPO_DIR/server/$stale && mv $stale $REPO_DIR/server/$stale" >&2
-  echo "" >&2
-  echo "(plain mv would nest it at server/$stale/$stale, since the destination exists.)" >&2
-  exit 1
+# A checkout from before the server/ split has its worlds at the repo root. Starting
+# with the new mount would generate a fresh empty world while the real save sits one
+# directory up, so refuse. This lives here rather than in the README because
+# docker_run.sh exists in the old checkout too -- a README note isn't read until
+# after the pull that strands the save.
+stale=()
+for d in world world_nether world_the_end; do
+  [[ -d "$REPO_DIR/$d" ]] && stale+=("$d")
 done
+if (( ${#stale[@]} )); then
+  echo "FATAL: found at the repo root: ${stale[*]}" >&2
+  echo "" >&2
+  echo "This checkout predates the server/ layout. Those directories are your live" >&2
+  echo "save; git left them because they are untracked at that path. Move each one" >&2
+  echo "under $REPO_DIR/server/ (replacing the older tracked copy, if any), keeping" >&2
+  echo "a tar of it first, then re-run this script." >&2
+  exit 1
+fi
 
 docker stop -t 90 mc-server 2>/dev/null || true
 docker rm -f mc-server 2>/dev/null || true
