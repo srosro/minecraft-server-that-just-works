@@ -18,8 +18,16 @@ set -euo pipefail
 
 REPO_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
-docker stop -t 90 mc-server 2>/dev/null || true
-docker rm -f mc-server 2>/dev/null || true
+# A swallowed stop failure followed by `rm -f` is a SIGKILL to a running server,
+# which is the mid-save chunk corruption this script's own -t 90 exists to avoid.
+# Same inspect-gated, fail-loud handling as scripts/backup-world.sh.
+if docker inspect mc-server >/dev/null 2>&1; then
+  if ! docker stop -t 90 mc-server >/dev/null; then
+    echo "FATAL: mc-server would not stop; refusing to force-remove a live server" >&2
+    exit 1
+  fi
+  docker rm mc-server >/dev/null
+fi
 
 docker run -d \
   --name mc-server \

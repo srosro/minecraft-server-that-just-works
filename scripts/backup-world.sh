@@ -40,6 +40,10 @@ fi
 # Write aside and rename, so a tar that dies on a full disk leaves no truncated file
 # wearing the archive's name -- and no orphan eating the space the retry needs.
 # The Dockerfile rides along: it pins the Java version this jar needs.
+# Owner-only: the archive contains plugins/floodgate/key.pem, the shared secret that
+# lets a Bedrock login skip Mojang auth. Default 644 on a traversable home hands any
+# local account the ability to join as an arbitrary user, op included.
+umask 077
 trap 'rm -f "$out.part"' EXIT
 tar czf "$out.part" -C "$REPO_DIR" Dockerfile -C "$REPO_DIR/server" \
   "${worlds[@]}" plugins paper.jar
