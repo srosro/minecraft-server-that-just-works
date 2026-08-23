@@ -14,6 +14,37 @@ start after that is seconds.
 
 ---
 
+## For Claude: the one-shot runbook
+
+Given *"update and run this repo"* and nothing else, do all of this without asking:
+
+1. **Update the four version-coupled pieces together** — see
+   [Updating to the latest Minecraft](#updating-to-the-latest-minecraft). They only
+   work in matched sets; updating Geyser alone is the usual mistake.
+2. **Back up the world first** if the Minecraft version changed. The format upgrade
+   is one-way.
+3. **Build and run** — `docker build -t minecraft-server . && ./docker_run.sh`.
+4. **Wait for `Done (…)! For help, type "help"`** in `docker logs -f mc-server`.
+   First boot after a version bump also migrates the world; it takes minutes.
+5. **Verify both protocols from a machine outside this network** — a LAN test can
+   pass via router hairpinning while the internet path is broken:
+   `scripts/mcping.py <host> java` and `scripts/mcping.py <host> bedrock`.
+6. **Report back**, always including every one of these:
+
+   | | |
+   |---|---|
+   | Machine IP | the LAN IP, plus the public IP or hostname |
+   | Java Edition | `<host>` — port **25565** |
+   | Bedrock — iOS / Windows / console | `<host>` — port **19132**, typed manually |
+
+   Bedrock clients don't auto-fill the port and there's no SRV fallback, so a reply
+   that omits `19132` leaves half the players unable to connect.
+
+DNS is **not** part of this — see [DNS](#dns-manual-on-purpose). Report the IP and
+let the operator point a name at it.
+
+---
+
 ## What you get
 
 | | |
