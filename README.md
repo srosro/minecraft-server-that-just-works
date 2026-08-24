@@ -39,7 +39,7 @@ Given *"update and run this repo"* and nothing else, do all of this without aski
 
    Three things it gets right that an obvious `docker logs | grep` does not: it
    matches *Paper's* ready line rather than Geyser's earlier one (Geyser is up before
-   25565 is bound), it reads only the current boot (`docker logs` replays history, so
+   29565 is bound), it reads only the current boot (`docker logs` replays history, so
    a restarted container still carries the last run's ready line), and it detects a
    crash via `RestartCount` — Docker reports `Running=true` throughout restart
    backoff, so a crash-looping server never looks stopped.
@@ -55,11 +55,12 @@ Given *"update and run this repo"* and nothing else, do all of this without aski
    | | |
    |---|---|
    | Machine IP | the LAN IP, plus the public IP or hostname |
-   | Java Edition | `<host>` — port **25565** |
-   | Bedrock — iOS / Windows / console | `<host>` — port **19132**, typed manually |
+   | Java Edition | `<host>` — port **29565**, typed manually |
+   | Bedrock — iOS / Windows / console | `<host>` — port **29132**, typed manually |
 
    Bedrock clients don't auto-fill the port and there's no SRV fallback, so a reply
-   that omits `19132` leaves half the players unable to connect.
+   that omits `29132` leaves half the players unable to connect. Neither port is a
+   default any more, so **both** have to be typed unless an SRV record covers Java.
 
 DNS is **not** part of this — see [DNS](#dns-manual-on-purpose). Report the IP and
 let the operator point a name at it.
@@ -72,8 +73,8 @@ let the operator point a name at it.
 |---|---|
 | Server | Paper (Minecraft Java Edition) |
 | Bedrock support | Geyser + Floodgate — phones, tablets, consoles, Windows |
-| Java port | **25565/tcp** |
-| Bedrock port | **19132/udp** |
+| Java port | **29565/tcp** |
+| Bedrock port | **29132/udp** |
 | Runtime | Docker, `server/` bind-mounted at `/minecraft` |
 
 Bedrock players join through Geyser, and Floodgate lets them in without a Java account.
@@ -92,7 +93,7 @@ Bedrock players join through Geyser, and Floodgate lets them in without a Java a
   Dockerfile's `CMD` together; the cap must stay above the heap or the kernel
   OOM-kills the server mid-save. **On Raspberry Pi OS that cap does nothing until
   you enable it — see below.**
-- Ports `25565/tcp` and `19132/udp` reachable — see [Networking](#networking)
+- Ports `29565/tcp` and `29132/udp` reachable — see [Networking](#networking)
 
 ### Raspberry Pi: the memory cap needs enabling
 
@@ -244,8 +245,8 @@ this is the single most common way to end up with "Java works, Bedrock doesn't":
 
 | Edition | Port | Protocol |
 |---|---|---|
-| Java | 25565 | **TCP** |
-| Bedrock | 19132 | **UDP** |
+| Java | 29565 | **TCP** |
+| Bedrock | 29132 | **UDP** |
 
 Forward both on your router to the machine running the server, and give that machine a
 **DHCP reservation** — the rules point at a fixed IP and break silently if its lease changes.
@@ -268,8 +269,9 @@ hostname instead of a bare IP:
   dynamic DNS and a timer. Keep that updater **outside this repo entirely** — it holds
   your registrar credentials and this tree is public. `server/` is doubly wrong: the
   server's plugins can write there.
-- Java clients can then use the bare hostname (25565 is their default port). **Bedrock
-  clients must be given the port explicitly** — there's no SRV fallback.
+- Java clients honour an **SRV record**, so `_minecraft._tcp.<host>` pointing at 29565
+  lets them type the bare hostname. **Bedrock has no SRV fallback** — those players
+  always type the port.
 
 ---
 
@@ -278,12 +280,14 @@ hostname instead of a bare IP:
 After setup, hand out exactly this:
 
 ```
-Java Edition:      <host>            (port 25565 — the default, usually auto-filled)
+Java Edition:      <host>  port 29565   (or just <host>, with an SRV record)
 Bedrock / iOS /
-Windows / console: <host>  port 19132
+Windows / console: <host>  port 29132
 ```
 
-Bedrock players must type the port manually. Java players usually don't.
+Both ports are non-default, chosen to keep the server off the scanners that sweep
+25565/19132. That costs typing: Bedrock players always enter the port, and Java
+players do too unless you add the SRV record above.
 
 ---
 

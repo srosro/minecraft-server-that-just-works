@@ -53,4 +53,4 @@ def bedrock(host, port, timeout=6):
 
 if __name__=='__main__':
     host,which=sys.argv[1],sys.argv[2]
-    print(java(host,25565) if which=='java' else bedrock(host,19132))
+    print(java(host,29565) if which=='java' else bedrock(host,29132))

@@ -8,7 +8,7 @@ FROM eclipse-temurin:25-jre-noble
 WORKDIR /minecraft
 ENV HOME=/minecraft
 
-EXPOSE 25565 19132/udp
+EXPOSE 29565 29132/udp
 
 # Unprivileged. docker_run.sh overrides this with the invoking user's uid:gid so
 # that bind-mounted world files stay writable from the host.

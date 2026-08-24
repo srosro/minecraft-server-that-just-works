@@ -39,7 +39,7 @@ while (( SECONDS < end )); do
   # match into a failure.
   #
   # Paper's own line, not Geyser's -- Geyser logs "Done (1.7s)! Run /geyser help for
-  # help!" during plugin enable, before Paper has bound 25565.
+  # help!" during plugin enable, before Paper has bound 29565.
   if grep -q 'Done (.*)! For help, type' < <(docker logs --since "$since" mc-server 2>&1); then
     echo "READY"
     exit 0

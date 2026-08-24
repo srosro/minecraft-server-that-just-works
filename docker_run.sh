@@ -34,8 +34,8 @@ docker run -d \
   --restart unless-stopped \
   --user "$(id -u):$(id -g)" \
   --memory=5g --memory-swap=5g \
-  -p 25565:25565 \
-  -p 19132:19132/udp \
+  -p 29565:29565 \
+  -p 29132:29132/udp \
   -v "$REPO_DIR/server:/minecraft" \
   -w /minecraft \
   minecraft-server
